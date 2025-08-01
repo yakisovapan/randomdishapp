@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今日の献立ガチャ</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>今日の献立ガチャ</h1>
+        
+        <div class="button-wrapper">
+            <button id="generateDishBtn" type="button">料理名をランダム表示！</button>
+        </div>
+
+        <div class="content-display">
+            <p id="dishNameDisplay" th:text="${dishName}">考え中...</p>
+            <img id="dishImageDisplay" src="" alt="料理の画像" style="display: none;">
+            
+            <div id="recipeDetails" style="display: none;">
+                <h2>レシピ説明</h2>
+                <p id="recipeDescriptionDisplay"></p>
+                <h2>材料</h2>
+                <p id="recipeMaterialDisplay"></p>
+                <h2>詳細を見る</h2>
+                <p><a id="recipeUrlDisplay" href="#" target="_blank" rel="noopener noreferrer">楽天レシピで詳細を見る</a></p>
+            </div>
+        </div>
+    </div>
+    <footer>
+        <p>&copy; 2025 yksvdev. Powered by 楽天レシピAPI.</p>
+    </footer>
+
+    <script>
+        document.getElementById('generateDishBtn').addEventListener('click', function() {
+            const dishNameDisplay = document.getElementById('dishNameDisplay');
+            const dishImageDisplay = document.getElementById('dishImageDisplay');
+            const recipeDetails = document.getElementById('recipeDetails');
+            const recipeDescriptionDisplay = document.getElementById('recipeDescriptionDisplay');
+            const recipeMaterialDisplay = document.getElementById('recipeMaterialDisplay');
+            const recipeUrlDisplay = document.getElementById('recipeUrlDisplay');
+            
+            // 表示を初期化
+            dishNameDisplay.textContent = '考え中...';
+            dishImageDisplay.style.display = 'none';
+            dishImageDisplay.src = '';
+            recipeDetails.style.display = 'none';
+            recipeDescriptionDisplay.textContent = '';
+            recipeMaterialDisplay.textContent = '';
+            recipeUrlDisplay.href = '#';
+            recipeUrlDisplay.style.display = 'none';
+
+            fetch('/api/generateDish', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.dishName || 'エラーが発生しました。');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                dishNameDisplay.textContent = data.dishName;
+
+                if (data.dishImageUrl && data.dishImageUrl !== "") {
+                    dishImageDisplay.src = data.dishImageUrl;
+                    dishImageDisplay.style.display = 'block';
+                } else {
+                    dishImageDisplay.style.display = 'none';
+                }
+
+                // 説明、材料、URLの表示を更新
+                if (data.recipeDescription || data.recipeMaterial || data.recipeUrl) {
+                    recipeDescriptionDisplay.textContent = data.recipeDescription || '説明はありません。';
+                    recipeMaterialDisplay.textContent = data.recipeMaterial || '材料は不明です。';
+                    
+                    if (data.recipeUrl && data.recipeUrl !== "") {
+                        // URLから'rafcid'パラメータを削除する処理
+                        const url = new URL(data.recipeUrl);
+                        url.searchParams.delete('rafcid'); // 'rafcid'パラメータを削除
+                        const cleanedUrl = url.toString(); // クリーンアップされたURLを取得
+                        
+                        recipeUrlDisplay.href = cleanedUrl; // 修正されたURLを設定
+                        recipeUrlDisplay.style.display = 'inline'; 
+                    } else {
+                        recipeUrlDisplay.style.display = 'none';
+                    }
+                    
+                    recipeDetails.style.display = 'block';
+                } else {
+                    recipeDetails.style.display = 'none';
+                }
+
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                dishNameDisplay.textContent = 'エラー: ' + error.message;
+                dishImageDisplay.style.display = 'none';
+                recipeDetails.style.display = 'none';
+                recipeUrlDisplay.style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
